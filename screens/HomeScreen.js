@@ -1,179 +1,142 @@
-import * as WebBrowser from 'expo-web-browser';
-import * as React from 'react';
-import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
+import React, { Component } from 'react';
+import { TouchableOpacity, ScrollView } from 'react-native';
+import { Container, Header, View, DeckSwiper, Card, CardItem, Thumbnail, Text, Left, Right, Body, Icon } from 'native-base';
+import * as SQLite from 'expo-sqlite'
+import quote_data from '../assets/database/quotes.json'
+import SharePopup from './components/Share'
+import billionaire from './components/Personas'
+import field from './components/Field'
+import song from './components/Song'
+import pImage from './pImage'
+import AdBoard from './components/adBoard'
 
-import { MonoText } from '../components/StyledText';
 
-export default function HomeScreen() {
-  return (
-    <View style={styles.container}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-        <View style={styles.welcomeContainer}>
-          <Image
-            source={
-              __DEV__
-                ? require('../assets/images/robot-dev.png')
-                : require('../assets/images/robot-prod.png')
+const db = SQLite.openDatabase("db.db")
+
+export default class HomeScreen extends Component {
+
+  state = {
+    search_result: [],
+  }
+
+
+  async UNSAFE_componentWillMount(){
+
+      this.setState({ isLoading: true })
+
+      db.transaction(tx => {
+        tx.executeSql("select * from quotes where interested = 1 order by random() limit 250 ", [], (_, { rows }) =>
+        this.setState({ search_result: rows._array })
+        );
+      });
+
+      this.setState({ isLoading: false })
+
+   
+  }
+
+
+
+
+  emptyResult(){
+    var empty_set = false
+    if(this.state.search_result.length <= 0 ){
+      empty_set = true
+    }
+    return empty_set
+  }
+
+  makeThread(quote, name){
+    return quote + '\n --' + name
+  }
+
+  render() {
+    return (
+      <Container style={{ backgroundColor: '#2F2F31' }}>
+        <Header style={{ backgroundColor: '#272626' }}>
+          <Left>
+            <TouchableOpacity onPress={() => this.props.navigation.openDrawer() }>
+              <Icon name="menu" style={{ color: '#fff', fontSize: 40 }} />
+            </TouchableOpacity>
+          </Left>
+          <Body>
+          <Text style={{ color: '#fff', fontSize: 20 }}>Music Heroes Quotes</Text>
+          </Body>
+        </Header>
+        {this.state.isLoading ? (
+            <View style={styles.loading}>
+                <Text style={{ color: '#fff', textAlign: 'center'}}>is loading</Text>
+            </View>
+            ) : (
+            <View>
+
+          {this.emptyResult() ? (
+            <View style={styles.loading}>
+                <Text style={{ color: '#fff', textAlign: 'center'}}>loading...</Text>
+            </View>
+          ) : (
+
+          <View>
+          <DeckSwiper
+            dataSource={this.state.search_result}
+            renderItem={item =>
+              <Card style={{ elevation: 3 }}>
+                <CardItem style={{ backgroundColor: '#424040' }}>
+                  <Left>
+                    <Thumbnail source={pImage(item.name)} />
+                    <Body>
+                        <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 17 }}>{billionaire(item.name)}</Text>
+                      <Text style={{ color: '#fff', fontSize: 12 }} note>{field(item.name)}</Text>
+                    </Body>
+                  </Left>
+                </CardItem>
+                <CardItem cardBody>
+                  <View style={{ width: '100%', minHeight: 300, maxHeight: 500, justifyContent: 'center', alignItems: 'center', backgroundColor: '#424040', padding: 10 }}>
+                  
+                  <ScrollView contentContainerStyle={{ justifyContent: 'center', alignItems: 'center', minHeight: 300 }}>
+                  <Text style={{ textAlign: 'center', color: '#ffffff', fontSize: 25, lineHeight: 40 }}>
+                    {item.quote}
+                  </Text>
+                  </ScrollView>
+
+                  </View>
+                </CardItem>
+                <CardItem style={{ backgroundColor: '#424040' }}>
+                  <Left>
+                    <Text style={{ color: '#fff', fontSize: 15, fontStyle: 'italic' }}>Track: {song(item.song)}</Text>
+                  </Left>
+                  <Right>
+                    <SharePopup title={billionaire(item.name)} thread={this.makeThread(item.quote, billionaire(item.name))} />
+                  </Right>
+                </CardItem>
+              </Card>
             }
-            style={styles.welcomeImage}
           />
         </View>
 
-        <View style={styles.getStartedContainer}>
-          <DevelopmentModeNotice />
-
-          <Text style={styles.getStartedText}>Open up the code for this screen:</Text>
-
-          <View style={[styles.codeHighlightContainer, styles.homeScreenFilename]}>
-            <MonoText>screens/HomeScreen.js</MonoText>
+            )}
           </View>
+        )}
 
-          <Text style={styles.getStartedText}>
-            Change any of the text, save the file, and your app will automatically reload.
-          </Text>
+        <View style={styles.adStyle}>
+          <AdBoard />
         </View>
-
-        <View style={styles.helpContainer}>
-          <TouchableOpacity onPress={handleHelpPress} style={styles.helpLink}>
-            <Text style={styles.helpLinkText}>Help, it didn’t automatically reload!</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-
-      <View style={styles.tabBarInfoContainer}>
-        <Text style={styles.tabBarInfoText}>This is a tab bar. You can edit it in:</Text>
-
-        <View style={[styles.codeHighlightContainer, styles.navigationFilename]}>
-          <MonoText style={styles.codeHighlightText}>navigation/BottomTabNavigator.js</MonoText>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-HomeScreen.navigationOptions = {
-  header: null,
-};
-
-function DevelopmentModeNotice() {
-  if (__DEV__) {
-    const learnMoreButton = (
-      <Text onPress={handleLearnMorePress} style={styles.helpLinkText}>
-        Learn more
-      </Text>
-    );
-
-    return (
-      <Text style={styles.developmentModeText}>
-        Development mode is enabled: your app will be slower but you can use useful development
-        tools. {learnMoreButton}
-      </Text>
-    );
-  } else {
-    return (
-      <Text style={styles.developmentModeText}>
-        You are not in development mode: your app will run at full speed.
-      </Text>
+      </Container>
     );
   }
 }
 
-function handleLearnMorePress() {
-  WebBrowser.openBrowserAsync('https://docs.expo.io/versions/latest/workflow/development-mode/');
-}
 
-function handleHelpPress() {
-  WebBrowser.openBrowserAsync(
-    'https://docs.expo.io/versions/latest/get-started/create-a-new-app/#making-your-first-change'
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
+const styles = ({
+  bg: {
+    backgroundColor: '#424040'
   },
-  developmentModeText: {
-    marginBottom: 20,
-    color: 'rgba(0,0,0,0.4)',
-    fontSize: 14,
-    lineHeight: 19,
-    textAlign: 'center',
-  },
-  contentContainer: {
-    paddingTop: 30,
-  },
-  welcomeContainer: {
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  welcomeImage: {
-    width: 100,
-    height: 80,
-    resizeMode: 'contain',
-    marginTop: 3,
-    marginLeft: -10,
-  },
-  getStartedContainer: {
-    alignItems: 'center',
-    marginHorizontal: 50,
-  },
-  homeScreenFilename: {
-    marginVertical: 7,
-  },
-  codeHighlightText: {
-    color: 'rgba(96,100,109, 0.8)',
-  },
-  codeHighlightContainer: {
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 3,
-    paddingHorizontal: 4,
-  },
-  getStartedText: {
-    fontSize: 17,
-    color: 'rgba(96,100,109, 1)',
-    lineHeight: 24,
-    textAlign: 'center',
-  },
-  tabBarInfoContainer: {
+  adStyle: {
+    height: 100,
+    width: '100%',
     position: 'absolute',
     bottom: 0,
-    left: 0,
-    right: 0,
-    ...Platform.select({
-      ios: {
-        shadowColor: 'black',
-        shadowOffset: { width: 0, height: -3 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-      },
-      android: {
-        elevation: 20,
-      },
-    }),
-    alignItems: 'center',
-    backgroundColor: '#fbfbfb',
-    paddingVertical: 20,
-  },
-  tabBarInfoText: {
-    fontSize: 17,
-    color: 'rgba(96,100,109, 1)',
-    textAlign: 'center',
-  },
-  navigationFilename: {
-    marginTop: 5,
-  },
-  helpContainer: {
-    marginTop: 15,
-    alignItems: 'center',
-  },
-  helpLink: {
-    paddingVertical: 15,
-  },
-  helpLinkText: {
-    fontSize: 14,
-    color: '#2e78b7',
-  },
-});
+    alignItems: 'center', 
+    justifyContent: 'center'
+  }
+})
